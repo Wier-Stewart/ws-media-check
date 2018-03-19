@@ -3,9 +3,10 @@
 * Plugin Name: Media Library Check
 * Plugin URI: http://www.wierstewart.com/
 * Description:  Checks to see each Media Library item is locally available.
-* Version: 1.0.0
+* Version: 1.0.2
 * Author: W/S
 * License: GPLv2
+* Source: Heavily modified from https://wordpress.org/plugins/media-files-tools/
 * */
 
 $extensions = array(
@@ -45,84 +46,79 @@ class wsMediaCheck{
     }
 
 
-
-//////////////////////////////////////
-//////////////////////////////////////
-
-
-	function add_media_library_columns( $columns ) {
-    	$columns['filesize_local']  = __( 'Local File Exists', 'media-file-tools' );
-    	$columns['filesize_aws']  = __( 'File on AWS', 'media-file-tools' );
-		return $columns;
-	}
-  /**
-   * Adjust File Size column on Media Library page in WP admin
-   */
-  function media_check_column_size() {
-    echo
-    '<style>
-    .manage-column.column-title,
-    .wp-list-table.widefat td.sortable{
-      width:30%;
+    function add_media_library_columns( $columns ) {
+        $columns['filesize_local']  = __( 'Local File Exists', 'media-check' );
+        $columns['filesize_aws']  = __( 'File on AWS', 'media-check' );
+        return $columns;
     }
 
-    .wp-list-table .manage-column.column-smushit{
-      width:15%;
-    }
+    /**
+    * Adjust File Size column on Media Library page in WP admin
+    */
+    function media_check_column_size() {
+        echo
+        '<style>
+        .manage-column.column-title,
+        .wp-list-table.widefat td.sortable{
+          width:30%;
+        }
 
-    .wp-list-table .column-filesize_local,
-    .wp-list-table .column-filesize_aws {
-      width: 10%;
-      text-align: center;
-    }
+        .wp-list-table .manage-column.column-smushit{
+          width:15%;
+        }
 
-    .wp-list-table td.column-filesize_local a span,
-    .wp-list-table td.column-filesize_aws a span{
-      font-size: 30px;
-    }
-    .wp-list-table .column-filesize_local a span.dashicons-yes,
-    .wp-list-table .column-filesize_aws a span.dashicons-yes{
-      color: green;
-    }
-    .wp-list-table .column-filesize_local a span.dashicons-no,
-    .wp-list-table .column-filesize_aws a span.dashicons-no{
-      color: red;
-    }
+        .wp-list-table .column-filesize_local,
+        .wp-list-table .column-filesize_aws {
+          width: 10%;
+          text-align: center;
+        }
 
+        .wp-list-table td.column-filesize_local a span,
+        .wp-list-table td.column-filesize_aws a span{
+          font-size: 30px;
+        }
+        .wp-list-table .column-filesize_local a span.dashicons-yes,
+        .wp-list-table .column-filesize_aws a span.dashicons-yes{
+          color: green;
+        }
+        .wp-list-table .column-filesize_local a span.dashicons-no,
+        .wp-list-table .column-filesize_aws a span.dashicons-no{
+          color: red;
+        }
 
-    </style>';
-  }
+        </style>';
+    }
 
   /**
    * Core Content:
    *
    */
 	function add_media_library_content( $column_name, $post_id ){
-      $image_data = null;
+        $image_data = null;
 
-			if( $column_name == 'filesize_local'){
+        if( $column_name == 'filesize_local'){
 
-          $image_data = json_decode( get_post_meta( $post_id, '_filesize_local', true ), true); //size_format
-          if ( !$image_data ){
-             $image_data = $this->generate_media_check_metadata( $image_data, $post_id );
-          }
+            $image_data = json_decode( get_post_meta( $post_id, '_filesize_local', true ), true); //size_format
+            if ( !$image_data ){
+                $image_data = $this->generate_media_check_metadata( $image_data, $post_id );
+            }
 
-          if( $image_data['file_size'] > 0 ) echo "<a target='_blank' href='".$image_data['url']."'><span class='dashicons dashicons-yes'></span></a>";
-          else  echo "<a target='_blank' href='".$image_data['url']."'><span class='dashicons dashicons-no'></span></a>";
+            if( $image_data['file_size'] > 0 ) echo "<a target='_blank' href='".$image_data['url']."'><span class='dashicons dashicons-yes'></span></a>";
+            else  echo "<a target='_blank' href='".$image_data['url']."'><span class='dashicons dashicons-no'></span></a>";
 
-        //TODO: add a URL if not found?
-        unset($image_data);
+            //TODO: add a URL if not found?
+            unset($image_data);
 
-      }//filesize-column
+        }//filesize-column
 
-			if( $column_name == 'filesize_aws'){
+        if( $column_name == 'filesize_aws'){
         $aws_url = get_attached_file( $post_id );	//aws url will be returned if file not found
         if(stripos($aws_url, '//')===false) $aws_url = $this->build_aws_url($post_id);
 
         if( stripos($aws_url, '//')!==false ) echo "<a target='_blank' href='$aws_url'><span class='dashicons dashicons-yes'></span></a>";
         else  echo "<a target='_blank' href='$aws_url'><span class='dashicons dashicons-no'></span></a>";
 
-      }//filesize-column
+        }//filesize-column
 
 	}
 
@@ -273,109 +269,38 @@ class wsMediaCheck{
    */
 
 	function media_check_tools_menu() {
-		$size_media = add_media_page( 'File Sizes', 'File Sizes', 'activate_plugins', 'mediacheck_filesize', array($this,'media_check_options_page'));
+		$size_media = add_media_page( 'Media Check', 'Media Check', 'activate_plugins', 'mediacheck_filesize', array($this,'media_check_options_page'));
 	}
 
 
 	function media_check_options_page(){
-		global $wpdb;
-		if ( !current_user_can('level_10') )
-		die(__('Cheatin&#8217; uh?', 'media-file-tools' ));
-		echo '<div class="wrap">';
-		echo '<h2>' . __( 'File Size Options', 'media-file-tools' ) . '</h2>';
+        global $wpdb;
+        if ( !current_user_can('level_10') )
+        wp_die(__('Cheatin&#8217; uh?', 'media-check' ));
 
-		$action = isset($_GET['action']) ? $_GET['action'] : 'default';
-			switch ( $action ) {
-        case "size":
-        /*
-					$attachments = $wpdb->get_results( "SELECT ID FROM $wpdb->posts WHERE post_type = 'attachment'" ); ?>
-					<table class="widefat">
-						<thead>
-							<tr>
-								<th><?php _e( 'File',		'media-file-tools' ) ?></th>
-								<th><?php _e( 'Size',		'media-file-tools' ) ?></th>
-								<th><?php _e( 'MIME Type',	'media-file-tools' ) ?></th>
-								<th><?php _e( 'State',		'media-file-tools' ) ?></th>
-							</tr>
-						</thead>
-						<tfoot>
-							<tr>
-								<th><?php _e( 'File',		'media-file-tools' ) ?></th>
-								<th><?php _e( 'Size',		'media-file-tools' ) ?></th>
-								<th><?php _e( 'MIME Type',	'media-file-tools' ) ?></th>
-								<th><?php _e( 'State',		'media-file-tools' ) ?></th>
-							</tr>
-						</tfoot>
-						<tbody><?php
-							foreach( $attachments as $att ){
-								$att_id				= $att->ID;
-								$file 				= get_attached_file( $att_id );
-								$filename_only		= basename( get_attached_file( $att_id ) );
-								$mimetype			= get_post_mime_type( $att_id );
-								$file_size			= false;
-								$file_size			= filesize( $file );
-								$file_size_format	= size_format( $file_size );
+        echo '<div class="wrap">';
+        echo '<h2>' . __( 'Media Check Options', 'media-check' ) . '</h2>';
+        echo '<p>This plugin checks to see if media items are local and/or remote on AWS S3.</p>';
 
-								if ( ! empty( $file_size ) ) {
-									update_post_meta( $att_id, '_filesize', $file_size );
-									update_post_meta( $att_id, '_filesmimetype', $mimetype ); ?>
-									<tr>
-										<td><?php echo $filename_only; ?></td>
-										<td><?php echo $file_size_format; ?></td>
-										<td><?php echo $mimetype; ?></td>
-										<td>Done!</td>
-									</tr><?php
-								} else {
-									update_post_meta( $att_id, '_filesize', 'N/D' );
-									update_post_meta( $att_id, '_filesmimetype', $mimetype ); ?>
-									<tr>
-										<td><?php echo $filename_only; ?></td>
-										<td><?php echo 'Error'; ?></td>
-										<td><?php echo $mimetype; ?></td>
-										<td>Done!</td>
-									</tr><?php
-									}
-							} ?>
-						</tbody>
-					</table><?php
-*/
-				break;
+        $action = isset($_GET['action']) ? $_GET['action'] : 'default';
+        switch ( $action ) {
 
-				case 'single':
-        $image_data=array();
-        $image_id = isset($_GET['image_id']) ? $_GET['image_id'] : '-1';
-        if($image_id){ $image_data = media_files_tools_metadata_generate( $image_data, $image_id );
-          print_r($image_data);
+            case 'reset':
+            $attachment_reset_result= $wpdb->get_results( "DELETE $wpdb->postmeta.* FROM $wpdb->postmeta WHERE meta_key = '_filesize' or meta_key = '_filesmimetype' or meta_key = '_filesize_local' or meta_key = '_filesize_aws' " );
+
+            default:
+              $attachment_size_count = $wpdb->get_results( "SELECT count(*) as `total` FROM $wpdb->postmeta WHERE meta_key = '_filesize_local' " );
+              $sizecount = intval( $attachment_size_count[0]->total );
+              ?>
+              <p><?php echo $sizecount; ?> Media Library items have been checked.</p>
+              <p><?php _e( 'Reset to check again?', 'media-check' ); ?></p>
+              <p><a class="button" href="admin.php?page=mediacheck_filesize&action=reset"><?php _e( 'Reset All Checks', 'media-check' ); ?></a></p>
+              <?php
+
+            break;
         }
-        break;
 
-        case 'reset':
-        $attachment_reset_result= $wpdb->get_results( "DELETE $wpdb->postmeta.* FROM $wpdb->postmeta WHERE meta_key = '_filesize' or meta_key = '_filesmimetype' or meta_key = '_filesize_local' or meta_key = '_filesize_aws' " );
-//        print_R($attachment_reset_result);
-//        $attachment_reset_result = ( $attachment_reset_result );
-//        break;
-
-        default:
-          $attachment_size_count = $wpdb->get_results( "SELECT count(*) as `total` FROM $wpdb->postmeta WHERE meta_key = '_filesize_local' " );
-          $sizecount = intval( $attachment_size_count[0]->total );
-          ?>
-          <p><?php echo $sizecount; ?> Media Library items have sizes calculated.</p>
-          <p><?php _e( 'Reset all file sizes?', 'media-file-tools' ); ?></p>
-          <p><a class="button" href="admin.php?page=mediacheck_filesize&action=reset"><?php _e( 'Reset All Files Sizes', 'media-file-tools' ); ?></a></p>
-          <?php
-
-				break;
-			}
-      /*
-      ?>
-        <p><?php _e( 'Update all files size can take a while.', 'media-file-tools' ); ?></p>
-        <p><a class="button" href="admin.php?page=mediacheck_filesize&action=size"><?php _e( 'Get Files Size', 'media-file-tools' ); ?></a></p><?php
-      */
-		}
-
-
-    //////////////////////////////////////
-    //////////////////////////////////////
+    }//fx
 
 
   }//class
