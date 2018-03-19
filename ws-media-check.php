@@ -239,32 +239,32 @@ class wsMediaCheck{
    */
 
 	function add_media_library_columns_sortable( $columns ){
-    	$columns['filesize_local'] = '_filesize_local';
-    	$columns['filesize_aws'] = '_filesize_aws';
-		return $columns;
+        $columns['filesize_local'] = '_filesize_local';
+        $columns['filesize_aws'] = '_filesize_aws';
+        return $columns;
 	}
 
 	function media_check_column_localsize_do_sort(&$query){
-    	global $current_screen;
+        	$current_screen = get_current_screen();
 
-		if( 'upload' != $current_screen->id ) return;
+		if( is_object($current_screen) && 'upload' != $current_screen->id ) return;
 		$is_filesize = (isset( $_GET['orderby'] ) && '_filesize_local' == $_GET['orderby']);
 		if( !$is_filesize ) return;
 		if ( '_filesize_local' == $_GET['orderby'] ){
         	$query->set('meta_key',	'_filesize_local');
 			$query->set('orderby',	'meta_value_num');
-    	}
+    	     }
 	}
 	function media_check_column_awssize_do_sort(&$query){
-    	global $current_screen;
+        	$current_screen = get_current_screen();
 
-		if( 'upload' != $current_screen->id ) return;
+		if( is_object($current_screen) &&  'upload' != $current_screen->id ) return;
 		$is_mimetype = (isset( $_GET['orderby'] ) && '_filesize_aws' == $_GET['orderby']);
 		if( !$is_mimetype ) return;
 		if ( '_filesize_aws' == $_GET['orderby'] ){
         	$query->set('meta_key',	'_filesize_aws');
 			$query->set('orderby',	'meta_value');
-    	}
+    	     }
 	}
 
   /**
